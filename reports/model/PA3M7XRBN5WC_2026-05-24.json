@@ -1,0 +1,108 @@
+{
+  "date": "2026-05-24",
+  "account_id": "PA3M7XRBN5WC",
+  "account_name": "Paper Trading Account",
+  "strategy": "top10_momentum",
+  "cash": 100000.0,
+  "portfolio_value": 100000.0,
+  "nav": 100000.0,
+  "daily_pnl": 0.0,
+  "daily_pnl_pct": 0.0,
+  "drawdown_pct": 0.0,
+  "holdings": [],
+  "top10_today": [
+    "NVDA",
+    "GOOGL",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "AVGO",
+    "TSLA",
+    "META",
+    "AMD",
+    "CSCO"
+  ],
+  "top10_prediction": [
+    "NVDA",
+    "GOOGL",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "AVGO",
+    "TSLA",
+    "META",
+    "AMD",
+    "CSCO"
+  ],
+  "benchmark": {
+    "QQQ": {
+      "1d": null
+    },
+    "SPY": {
+      "1d": null
+    }
+  },
+  "orders_plan": [
+    {
+      "symbol": "NVDA",
+      "qty": 46,
+      "price": 215.33,
+      "cost": 9905.18
+    },
+    {
+      "symbol": "GOOGL",
+      "qty": 26,
+      "price": 382.97,
+      "cost": 9957.22
+    },
+    {
+      "symbol": "AAPL",
+      "qty": 32,
+      "price": 308.82,
+      "cost": 9882.24
+    },
+    {
+      "symbol": "MSFT",
+      "qty": 23,
+      "price": 418.57,
+      "cost": 9627.11
+    },
+    {
+      "symbol": "AMZN",
+      "qty": 37,
+      "price": 266.32,
+      "cost": 9853.84
+    },
+    {
+      "symbol": "AVGO",
+      "qty": 24,
+      "price": 414.14,
+      "cost": 9939.36
+    },
+    {
+      "symbol": "TSLA",
+      "qty": 23,
+      "price": 426.01,
+      "cost": 9798.23
+    },
+    {
+      "symbol": "META",
+      "qty": 16,
+      "price": 610.26,
+      "cost": 9764.16
+    },
+    {
+      "symbol": "AMD",
+      "qty": 21,
+      "price": 467.51,
+      "cost": 9817.71
+    },
+    {
+      "symbol": "CSCO",
+      "qty": 83,
+      "price": 120.41,
+      "cost": 9994.03
+    }
+  ],
+  "generated_at": "2026-05-24T15:50:09.427293"
+}

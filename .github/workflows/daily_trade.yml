@@ -1,0 +1,180 @@
+name: AlpacaBot Daily Trade & Report
+
+on:
+  schedule:
+    # 美東時間 09:30（開盤後30分） = UTC 14:30 = 台灣時間 22:30
+    - cron: '30 14 * * 1-5'
+    # 美東時間 06:00（開盤前，產生日報送出 Email）
+    # = UTC 11:00 = 台灣時間 19:00（但發送是台灣時間 06:00 UTC-5 → 改用 22:00 UTC）
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '試算模式（不實際下單）'
+        required: false
+        default: 'false'
+      action:
+        description: '執行動作: trade | report | email | all'
+        required: false
+        default: 'all'
+
+permissions:
+  contents: write
+
+jobs:
+  alpacabot:
+    name: AlpacaBot — 走遍所有帳戶
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Python 環境 ────────────────────────────────────
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── 3. 設定帳戶設定（從 Secrets 注入）───────────────
+      - name: Inject account config
+        env:
+          ALPACA_KEY_1: ${{ secrets.ALPACA_KEY_1 }}
+          ALPACA_SECRET_1: ${{ secrets.ALPACA_SECRET_1 }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: |
+          python - <<'EOF'
+          import json, os, re
+
+          with open("config/accounts.json", "r") as f:
+              raw = f.read()
+
+          env_vars = re.findall(r"\$\{(\w+)\}", raw)
+          for var in env_vars:
+              val = os.environ.get(var, "")
+              raw = raw.replace(f"${{{var}}}", val)
+
+          # 驗證 JSON 合法
+          json.loads(raw)
+          print("帳戶設定注入成功")
+          EOF
+
+      # ── 4. 執行交易策略（走遍所有帳戶）──────────────────
+      - name: Run strategy for all accounts
+        if: ${{ github.event.inputs.action == 'trade' || github.event.inputs.action == 'all' || github.event_name == 'schedule' }}
+        env:
+          ALPACA_KEY_1: ${{ secrets.ALPACA_KEY_1 }}
+          ALPACA_SECRET_1: ${{ secrets.ALPACA_SECRET_1 }}
+        run: |
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          if [ "$DRY_RUN" = "true" ]; then
+            python core/strategy_engine.py --run-all --dry-run
+          else
+            python core/strategy_engine.py --run-all
+          fi
+
+      # ── 5. 再平衡檢查 ─────────────────────────────────────
+      - name: Check and rebalance
+        if: ${{ github.event.inputs.action == 'trade' || github.event.inputs.action == 'all' || github.event_name == 'schedule' }}
+        env:
+          ALPACA_KEY_1: ${{ secrets.ALPACA_KEY_1 }}
+          ALPACA_SECRET_1: ${{ secrets.ALPACA_SECRET_1 }}
+        run: |
+          python - <<'EOF'
+          import logging
+          logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+          from core.alpaca_client import load_all_clients, load_account_config
+          from core.strategy_engine import load_strategy
+          from core.rebalancer import check_and_rebalance
+
+          accounts = load_account_config()
+          clients = load_all_clients()
+          for acct in accounts:
+              if not acct.get("enabled", True):
+                  continue
+              client = clients[acct["account_id"]]
+              strategy = load_strategy(acct["active_strategy"])
+              orders = check_and_rebalance(client, strategy)
+              print(f"帳戶 {acct['account_id']}: 再平衡 {len(orders)} 筆")
+          EOF
+
+      # ── 6. 產生日報 JSON（Model 層）──────────────────────
+      - name: Generate daily reports
+        if: ${{ github.event.inputs.action == 'report' || github.event.inputs.action == 'all' || github.event_name == 'schedule' }}
+        env:
+          ALPACA_KEY_1: ${{ secrets.ALPACA_KEY_1 }}
+          ALPACA_SECRET_1: ${{ secrets.ALPACA_SECRET_1 }}
+        run: python reports/model/generate.py --all
+
+      # ── 7. 渲染 HTML 報告（View 層）──────────────────────
+      - name: Render HTML reports
+        if: ${{ github.event.inputs.action == 'report' || github.event.inputs.action == 'all' || github.event_name == 'schedule' }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          from reports.view.render import render_report
+          from datetime import datetime
+
+          today = datetime.now().strftime("%Y-%m-%d")
+          with open("config/accounts.json", "r") as f:
+              config = json.load(f)
+
+          for acct in config["accounts"]:
+              if acct.get("enabled", True):
+                  try:
+                      render_report(acct["account_id"], today)
+                      print(f"HTML 報告產生：{acct['account_id']}")
+                  except Exception as e:
+                      print(f"HTML 渲染失敗 {acct['account_id']}: {e}")
+          EOF
+
+      # ── 8. 發送 Email 日報 ────────────────────────────────
+      - name: Send daily email reports
+        if: ${{ github.event.inputs.action == 'email' || github.event.inputs.action == 'all' || github.event_name == 'schedule' }}
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          from core.notifier import send_daily_report
+          from datetime import datetime
+
+          today = datetime.now().strftime("%Y-%m-%d")
+          import re
+          with open("config/accounts.json", "r") as f:
+              raw = f.read()
+          env_vars = re.findall(r"\$\{(\w+)\}", raw)
+          for var in env_vars:
+              raw = raw.replace(f"${{{var}}}", os.environ.get(var, ""))
+          config = json.loads(raw)
+
+          for acct in config["accounts"]:
+              if acct.get("enabled", True):
+                  result = send_daily_report(acct, today)
+                  print(f"Email {'成功' if result else '失敗'}：{acct['email']}")
+          EOF
+
+      # ── 9. 提交報告到 Git ─────────────────────────────────
+      - name: Commit and push reports
+        run: |
+          git config user.name "AlpacaBot[bot]"
+          git config user.email "alpacabot@users.noreply.github.com"
+          git add reports/
+          git diff --staged --quiet || git commit -m "📊 Auto report $(date +%Y-%m-%d) [skip ci]"
+          git push || echo "No changes to push"
+
+      # ── 10. 執行測試（可選） ──────────────────────────────
+      - name: Run tests
+        if: ${{ github.event.inputs.action == 'test' }}
+        run: pytest tests/ -v --tb=short

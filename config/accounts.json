@@ -1,0 +1,19 @@
+{
+  "accounts": [
+    {
+      "account_id": "PA3M7XRBN5WC",
+      "name": "主帳戶（Paper Trading）",
+      "endpoint": "https://paper-api.alpaca.markets/v2",
+      "api_key": "${ALPACA_KEY_1}",
+      "api_secret": "${ALPACA_SECRET_1}",
+      "active_strategy": "top10_momentum",
+      "email": "${NOTIFY_EMAIL}",
+      "enabled": true,
+      "watchlist": {
+        "科技股": ["AAPL", "MSFT", "NVDA", "META", "GOOGL"],
+        "AI相關": ["PLTR", "AI", "SOUN", "BBAI", "IONQ"],
+        "ETF": ["QQQ", "SPY", "ARKK", "SOXX", "XLK"]
+      }
+    }
+  ]
+}

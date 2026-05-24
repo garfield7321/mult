@@ -1,0 +1,36 @@
+{
+  "strategy_id": "top10_momentum",
+  "name": "Nasdaq 市值前十動能策略",
+  "description": "每日選出 Nasdaq 市值前十股，各投入 10% 資金，只買整數股",
+  "universe": "NASDAQ_TOP100",
+  "selection": {
+    "method": "market_cap",
+    "top_n": 10
+  },
+  "allocation": {
+    "per_stock_pct": 10,
+    "whole_shares_only": true,
+    "max_positions": 10
+  },
+  "rebalance": {
+    "on_new_deposit": true,
+    "deposit_threshold": 1000,
+    "monthly": true,
+    "day_of_month": 1
+  },
+  "entry": {
+    "type": "market",
+    "time_in_force": "day"
+  },
+  "exit": {
+    "stop_loss_pct": -15,
+    "take_profit_pct": null,
+    "type": "market",
+    "time_in_force": "day"
+  },
+  "notify": {
+    "on_trade": true,
+    "daily_report": true,
+    "email_time": "06:00"
+  }
+}

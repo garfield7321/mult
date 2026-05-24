@@ -1,0 +1,41 @@
+{
+  "strategy_id": "value_pe",
+  "name": "低本益比價值策略",
+  "description": "從 Nasdaq Top 100 中選出本益比最低的 10 檔，各投入 10% 資金",
+  "universe": "NASDAQ_TOP100",
+  "selection": {
+    "method": "pe_ratio",
+    "top_n": 10,
+    "sort_order": "asc",
+    "filter": {
+      "pe_ratio_min": 5,
+      "pe_ratio_max": 30
+    }
+  },
+  "allocation": {
+    "per_stock_pct": 10,
+    "whole_shares_only": true,
+    "max_positions": 10
+  },
+  "rebalance": {
+    "on_new_deposit": true,
+    "deposit_threshold": 1000,
+    "monthly": true,
+    "day_of_month": 1
+  },
+  "entry": {
+    "type": "market",
+    "time_in_force": "day"
+  },
+  "exit": {
+    "stop_loss_pct": -12,
+    "take_profit_pct": 25,
+    "type": "market",
+    "time_in_force": "day"
+  },
+  "notify": {
+    "on_trade": true,
+    "daily_report": true,
+    "email_time": "06:00"
+  }
+}
